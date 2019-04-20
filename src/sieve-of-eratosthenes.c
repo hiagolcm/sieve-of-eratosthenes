@@ -10,6 +10,7 @@ long int get_index_by_value(long int value);
 void mark_multiples(long int prime, char *list, long int partition_size, int my_rank);
 long int count_primes(char* list, long int length);
 long int find_next_multiple_grater_than(long int x, long int y);
+long int belongs_to_list(long int number);
 
 
 int main(int argc, char **argv) {
@@ -122,7 +123,7 @@ void mark_multiples(long int prime, char *list, long int reduced_size, int my_ra
     }
 
     while (current_value < last_value) {
-        if ((current_value + 1) % 6 == 0 || (current_value - 1) % 6 == 0) {
+        if (belongs_to_list(current_value)) {
             index = get_index_by_value(current_value) - index_start;
             list[index] = '-';
         }
@@ -150,4 +151,8 @@ long int count_primes(char* list, long int length) {
     }
 
     return count;
+}
+
+long int belongs_to_list(long int number) {
+    return (number + 1) % 6 == 0 || (number - 1) % 6 == 0;
 }
