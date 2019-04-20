@@ -97,19 +97,29 @@ void process(long int n, int comm_sz, int my_rank) {
 }
 
 void mark_multiples(long int prime, char *list, long int reduced_size, int my_rank) {
-    long int i;
-    long int index_start = get_index_by_value(prime * prime) - my_rank * reduced_size;
+    long int i, suffix;
+    long int index_start = get_index_by_value(prime * prime) - my_rank * reduced_size, k;
     long value;
 
     if (index_start < 0) {
         index_start = 0;
     }
 
-    for (i = index_start; i < reduced_size; i++) {
-        value = get_value_by_index(i, reduced_size, my_rank);
+    k = (index_start + my_rank * reduced_size) / 2 + 1;
+    suffix = index_start % 2 == 0 ? -1 : 1;
+    value = 6 * k + suffix;
 
+    for (i = index_start; i < reduced_size; i++) {
         if (value % prime == 0) {
             list[i] = '-';
+        }
+
+        if (suffix == -1) {
+            value = value + 2;
+            suffix = 1;
+        } else {
+            value = value + 4;
+            suffix = -1;
         }
     }
 }
