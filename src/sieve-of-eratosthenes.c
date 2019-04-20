@@ -6,8 +6,10 @@
 
 void process(long int n, int comm_sz, int my_rank);
 long int get_value_by_index(long int index, long int reduced_size, int my_rank);
+long int get_index_by_value(long int value);
 void mark_multiples(long int prime, char *list, long int partition_size, int my_rank);
 long int count_primes(char* list, long int length);
+long int find_next_multiple_grater_than(long int x, long int y);
 
 
 int main(int argc, char **argv) {
@@ -36,14 +38,24 @@ int main(int argc, char **argv) {
 }
 
 long int get_value_by_index(long int index, long int reduced_size, int my_rank) {
-    long int k = (index + my_rank * reduced_size) / 2 + 1;
+    index = index + my_rank * reduced_size;
+    long int k = (index) / 2 + 1;
     int suffix = index % 2 == 0 ? -1 : 1;
     return 6 * k + suffix;
 }
 
 long int get_index_by_value(long int value) {
-    long int k = (value + 1) / 6;
-    return (k - 1) * 2;
+    long int k;
+
+    if ((value + 1) % 6 == 0) {
+        k = (value + 1) / 6;
+        return (k - 1) * 2;    
+    } else if ((value - 1) % 6 == 0) {
+        k = (value - 1) / 6;
+        return (k - 1) * 2 + 1;    
+    }
+
+    return -1;
 }
 
 void process(long int n, int comm_sz, int my_rank) {
@@ -89,7 +101,7 @@ void process(long int n, int comm_sz, int my_rank) {
 
     count = count_primes(list, reduced_size);
     printf("count: %ld rank: %d\n", count, my_rank);
-    MPI_Reduce(&count, &global_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    // MPI_Reduce(&count, &global_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
     if (my_rank == 0) {
         //printf("primes: %ld\n", global_count);
@@ -97,31 +109,34 @@ void process(long int n, int comm_sz, int my_rank) {
 }
 
 void mark_multiples(long int prime, char *list, long int reduced_size, int my_rank) {
-    long int i, suffix;
-    long int index_start = get_index_by_value(prime * prime) - my_rank * reduced_size, k;
-    long value;
+    long int current_value, last_value, first_value, index, index_start;
 
-    if (index_start < 0) {
-        index_start = 0;
+    first_value = get_value_by_index(0, reduced_size, my_rank);
+    last_value = get_value_by_index(reduced_size - 1, reduced_size, my_rank);
+    index_start = my_rank * reduced_size;
+
+    current_value = prime * prime;
+
+    if (current_value < first_value) {
+        current_value = find_next_multiple_grater_than(prime, first_value);
     }
 
-    k = (index_start + my_rank * reduced_size) / 2 + 1;
-    suffix = index_start % 2 == 0 ? -1 : 1;
-    value = 6 * k + suffix;
-
-    for (i = index_start; i < reduced_size; i++) {
-        if (value % prime == 0) {
-            list[i] = '-';
+    while (current_value < last_value) {
+        if ((current_value + 1) % 6 == 0 || (current_value - 1) % 6 == 0) {
+            index = get_index_by_value(current_value) - index_start;
+            list[index] = '-';
         }
 
-        if (suffix == -1) {
-            value = value + 2;
-            suffix = 1;
-        } else {
-            value = value + 4;
-            suffix = -1;
-        }
+        current_value += prime;
     }
+}
+
+long int find_next_multiple_grater_than(long int x, long int y) {
+    while (y % x != 0) {
+        y++;
+    }
+
+    return y;
 }
 
 long int count_primes(char* list, long int length) {
