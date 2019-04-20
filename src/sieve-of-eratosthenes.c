@@ -5,8 +5,6 @@
 #include <string.h>
 
 void process(long int n, int comm_sz, int my_rank);
-long int get_value_by_index(long int index, long int reduced_size, int my_rank);
-long int get_index_by_value(long int value);
 void mark_multiples(long int prime, char *list, long int partition_size, int my_rank);
 long int count_primes(char* list, long int length);
 long int find_next_multiple_grater_than(long int x, long int y);
@@ -37,43 +35,23 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-long int get_value_by_index(long int index, long int reduced_size, int my_rank) {
-    index = index + my_rank * reduced_size;
-    long int k = (index) / 2 + 1;
-    int suffix = index % 2 == 0 ? -1 : 1;
-    return 6 * k + suffix;
-}
-
-long int get_index_by_value(long int value) {
-    long int k;
-
-    if ((value + 1) % 6 == 0) {
-        k = (value + 1) / 6;
-        return (k - 1) * 2;    
-    } else if ((value - 1) % 6 == 0) {
-        k = (value - 1) / 6;
-        return (k - 1) * 2 + 1;    
-    }
-
-    return -1;
-}
-
 void process(long int n, int comm_sz, int my_rank) {
-    long int partition_size, reduced_size, index, value, sqrt_n, count, global_count;
+    long int reduced_size, index, value, sqrt_n, count;
     int i;
     char *list;
 
     sqrt_n = sqrt(n);
 
-    partition_size = n / comm_sz + 1;
-    reduced_size = (partition_size - 1) / 3 + 1;
+    // represents only odd numbers
+    reduced_size = (n - 1) / (comm_sz * 2) + 1; 
 
+    // instatiate list. '*' will represt a prime number and '-' a non-prime.
     list = (char*) malloc(sizeof(char) * reduced_size);
     memset(list, '*', reduced_size);
 
     if (my_rank == 0) {
+        value = 3;
         for (index = 0; index < reduced_size; index++) {
-            value = get_value_by_index(index, reduced_size, my_rank);
             if (value > sqrt_n) {  break; }
 
             if (list[index] == '*') {
@@ -83,6 +61,8 @@ void process(long int n, int comm_sz, int my_rank) {
 
                 mark_multiples(value, list, reduced_size, my_rank);
             }
+
+            value += 2;
         }
 
         value = -1;
@@ -109,11 +89,10 @@ void process(long int n, int comm_sz, int my_rank) {
 }
 
 void mark_multiples(long int prime, char *list, long int reduced_size, int my_rank) {
-    long int current_value, last_value, first_value, index, index_start;
+    long int current_value, last_value, first_value, index;
 
-    first_value = get_value_by_index(0, reduced_size, my_rank);
-    last_value = get_value_by_index(reduced_size - 1, reduced_size, my_rank);
-    index_start = my_rank * reduced_size;
+    first_value = my_rank * reduced_size * 2 + 3;
+    last_value = first_value + (reduced_size - 1) * 2;
 
     current_value = prime * prime;
 
@@ -122,12 +101,9 @@ void mark_multiples(long int prime, char *list, long int reduced_size, int my_ra
     }
 
     while (current_value < last_value) {
-        if ((current_value + 1) % 6 == 0 || (current_value - 1) % 6 == 0) {
-            index = get_index_by_value(current_value) - index_start;
-            list[index] = '-';
-        }
-
-        current_value += prime;
+        index = current_value / 2 - 1 - my_rank * reduced_size;
+        list[index] = '-';
+        current_value += 2 * prime;
     }
 }
 
