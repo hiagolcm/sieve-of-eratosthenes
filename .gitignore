@@ -59,7 +59,7 @@ dkms.conf
 
 # latex
 **/*.aux
-**/*.latexmk
+**/*_latexmk
 **/*.fls
 **/*.log
 **/*.out
