@@ -1,3 +1,5 @@
+#include "sequential-version.h"
+
 #include <stdio.h>
 #include <mpi.h>
 #include <stdlib.h>
@@ -5,10 +7,10 @@
 #include <string.h>
 
 void process(long int n, int comm_sz, int my_rank);
-void mark_multiples(long int prime, char *list, long int partition_size, int my_rank);
-long int count_primes(char* list, long int length, int my_rank, int comm_sz, long int limit);
-long int find_next_multiple_grater_than(long int x, long int y);
+long int count_primes(char* list, long int length);
+long int find_next_multiple_grater_than(long int x, long int y, long int limit);
 long int belongs_to_list(long int number);
+void mark_multiples(char* list, long int prime, long int first_value, int length);
 
 
 int main(int argc, char **argv) {
@@ -37,108 +39,90 @@ int main(int argc, char **argv) {
 }
 
 void process(long int n, int comm_sz, int my_rank) {
-    long int reduced_size, index, value, sqrt_n, count;
-    int i;
+    long int number_of_odds, reduced_size, original_reduced_size, value, sqrt_n, i, current_prime, count = 0, numbers_analyzed = 0, start;
     char *list;
+    int length_on_cache = 4, current_length;
+    struct SOE soe;
 
-    sqrt_n = sqrt(n);
+    sqrt_n = sqrt(n) + 1;
+
+    soe = sequential_sieve_of_eratosthenes(sqrt_n);
 
     // represents only odd numbers
-    reduced_size = (n - 1) / (comm_sz * 2) + 1; 
+    start = (sqrt_n) % 2 == 0 ? sqrt_n + 1 : sqrt_n + 2;
+    number_of_odds = ceil((n - start + 1) / 2.0 ); 
+    reduced_size = number_of_odds / comm_sz;
+    original_reduced_size = reduced_size;
 
-    // instatiate list. '*' will represt a prime number and '-' a non-prime.
-    list = (char*) malloc(sizeof(char) * reduced_size);
-    memset(list, '*', reduced_size);
-
-    if (my_rank == 0) {
-        value = 3;
-        for (index = 0; index < reduced_size; index++) {
-            if (value > sqrt_n) {  break; }
-
-            if (list[index] == '*') {
-                for (i = 1; i < comm_sz; i++) {
-                    MPI_Send(&value, 1, MPI_LONG_INT, i, 0, MPI_COMM_WORLD);
-                }
-
-                mark_multiples(value, list, reduced_size, my_rank);
-            }
-
-            value += 2;
-        }
-
-        value = -1;
-        for (i = 1; i < comm_sz; i++) {
-            MPI_Send(&value, 1, MPI_LONG_INT, i, 0, MPI_COMM_WORLD);
-        }
-    } else {
-        do {
-            MPI_Recv(&value, 1, MPI_LONG_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
-            if (value != -1) {
-                mark_multiples(value, list, reduced_size, my_rank);
-            }
-        } while(value != -1);
+    if (my_rank == comm_sz - 1) {
+        reduced_size += number_of_odds % comm_sz;
     }
 
-    count = count_primes(list, reduced_size, my_rank, comm_sz, (n - 1) / 2);
-    printf("count: %ld rank: %d\n", count, my_rank);
-    // MPI_Reduce(&count, &global_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    list = (char*) malloc(sizeof(char) * length_on_cache);
+
+    value = start + my_rank * original_reduced_size * 2;
+
+    while (numbers_analyzed < reduced_size) {
+        memset(list, '*', length_on_cache);
+        numbers_analyzed += length_on_cache;
+
+        if (numbers_analyzed > reduced_size) {
+            length_on_cache = length_on_cache - (numbers_analyzed - reduced_size);
+        }
+
+        if (value == 33) {
+            printf("here");
+        }
+
+        for (i = 0; i < soe.size; i++) {
+            current_prime = soe.list[i];
+            mark_multiples(list, current_prime, value, length_on_cache);
+        }
+
+        count += count_primes(list, length_on_cache);
+
+        value += 2 * length_on_cache;
+    }
 
     if (my_rank == 0) {
-        //printf("primes: %ld\n", global_count);
+        count += soe.size;
     }
+
+    printf("count: %ld\n", count);
 }
 
-void mark_multiples(long int prime, char *list, long int reduced_size, int my_rank) {
-    long int current_value, last_value, first_value, index;
+void mark_multiples(char* list, long int prime, long int first_value, int length) {
+    long int current_value, last_value;
+    int index;
 
-    first_value = my_rank * reduced_size * 2 + 3;
-    last_value = first_value + (reduced_size - 1) * 2;
+    last_value = first_value + 2 * (length - 1);
 
     current_value = prime * prime;
 
     if (current_value < first_value) {
-        current_value = find_next_multiple_grater_than(prime, first_value);
+        current_value = find_next_multiple_grater_than(prime, first_value, last_value);
     }
 
-<<<<<<< HEAD
-    while (current_value < last_value) {
-        if (belongs_to_list(current_value)) {
-            index = get_index_by_value(current_value) - index_start;
-            list[index] = '-';
-        }
-
-        current_value += prime;
-=======
     while (current_value <= last_value) {
-        index = current_value / 2 - 1 - my_rank * reduced_size;
+        index = (current_value - first_value) / 2;
         list[index] = '-';
         current_value += 2 * prime;
->>>>>>> v3.0
     }
 }
 
-long int find_next_multiple_grater_than(long int x, long int y) {
-    while (y % x != 0) {
+long int find_next_multiple_grater_than(long int x, long int y, long int limit) {
+    while (y % x != 0 && y <= limit) {
         y += 2;
     }
 
     return y;
 }
 
-long int count_primes(char* list, long int length, int my_rank, int comm_sz, long int limit) {
+long int count_primes(char* list, long int length) {
     int i;
-    long int count = 0, index;
+    long int count = 0;
 
     for (i = 0; i < length; i++) {
-        if (my_rank == comm_sz - 1) {
-            index = my_rank * length + i;
-
-            if (index >= limit - 1) {
-                break;
-            }
-        }
-
         if (list[i] == '*') {
             count++;
         }
