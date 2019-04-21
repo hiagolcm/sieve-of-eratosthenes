@@ -54,7 +54,7 @@ void process(long int n, int comm_sz, int my_rank) {
     reduced_size = number_of_odds / comm_sz;
     original_reduced_size = reduced_size;
 
-    length_on_cache = reduced_size;
+    length_on_cache = 3900000;
 
     if (my_rank == comm_sz - 1) {
         reduced_size += number_of_odds % comm_sz;
