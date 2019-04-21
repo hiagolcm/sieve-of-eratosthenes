@@ -6,7 +6,7 @@
 
 void process(long int n, int comm_sz, int my_rank);
 void mark_multiples(long int prime, char *list, long int partition_size, int my_rank);
-long int count_primes(char* list, long int length);
+long int count_primes(char* list, long int length, int my_rank, int comm_sz, long int limit);
 long int find_next_multiple_grater_than(long int x, long int y);
 
 
@@ -79,7 +79,7 @@ void process(long int n, int comm_sz, int my_rank) {
         } while(value != -1);
     }
 
-    count = count_primes(list, reduced_size);
+    count = count_primes(list, reduced_size, my_rank, comm_sz, (n - 1) / 2);
     printf("count: %ld rank: %d\n", count, my_rank);
     // MPI_Reduce(&count, &global_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
 
@@ -100,7 +100,7 @@ void mark_multiples(long int prime, char *list, long int reduced_size, int my_ra
         current_value = find_next_multiple_grater_than(prime, first_value);
     }
 
-    while (current_value < last_value) {
+    while (current_value <= last_value) {
         index = current_value / 2 - 1 - my_rank * reduced_size;
         list[index] = '-';
         current_value += 2 * prime;
@@ -109,17 +109,25 @@ void mark_multiples(long int prime, char *list, long int reduced_size, int my_ra
 
 long int find_next_multiple_grater_than(long int x, long int y) {
     while (y % x != 0) {
-        y++;
+        y += 2;
     }
 
     return y;
 }
 
-long int count_primes(char* list, long int length) {
+long int count_primes(char* list, long int length, int my_rank, int comm_sz, long int limit) {
     int i;
-    long int count = 0;
+    long int count = 0, index;
 
     for (i = 0; i < length; i++) {
+        if (my_rank == comm_sz - 1) {
+            index = my_rank * length + i;
+
+            if (index >= limit - 1) {
+                break;
+            }
+        }
+
         if (list[i] == '*') {
             count++;
         }
