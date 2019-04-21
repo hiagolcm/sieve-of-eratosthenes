@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
 void process(long int n, int comm_sz, int my_rank) {
     long int number_of_odds, reduced_size, original_reduced_size, value, sqrt_n, i, current_prime, count = 0, numbers_analyzed = 0, start;
     char *list;
-    int length_on_cache = 4, current_length;
+    int length_on_cache, current_length;
     struct SOE soe;
 
     sqrt_n = sqrt(n) + 1;
@@ -53,6 +53,8 @@ void process(long int n, int comm_sz, int my_rank) {
     number_of_odds = ceil((n - start + 1) / 2.0 ); 
     reduced_size = number_of_odds / comm_sz;
     original_reduced_size = reduced_size;
+
+    length_on_cache = reduced_size;
 
     if (my_rank == comm_sz - 1) {
         reduced_size += number_of_odds % comm_sz;
@@ -68,10 +70,6 @@ void process(long int n, int comm_sz, int my_rank) {
 
         if (numbers_analyzed > reduced_size) {
             length_on_cache = length_on_cache - (numbers_analyzed - reduced_size);
-        }
-
-        if (value == 33) {
-            printf("here");
         }
 
         for (i = 0; i < soe.size; i++) {
@@ -111,11 +109,19 @@ void mark_multiples(char* list, long int prime, long int first_value, int length
 }
 
 long int find_next_multiple_grater_than(long int x, long int y, long int limit) {
-    while (y % x != 0 && y <= limit) {
-        y += 2;
+    long int mod = y % x;
+
+    if (mod == 0) {
+        return y;
     }
 
-    return y;
+    while ((x - mod) % 2 != 0 && y <= limit) {
+        y += 2;
+        mod = y % x;
+    }
+
+ 
+    return mod == 0 ? y : y + (x - y % x);
 }
 
 long int count_primes(char* list, long int length) {
