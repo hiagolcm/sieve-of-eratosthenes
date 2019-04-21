@@ -13,6 +13,7 @@ long int find_next_multiple_grater_than(long int x, long int y, long int limit);
 long int belongs_to_list(long int number);
 void mark_multiples(char* list, long int prime, long int first_value, int length, long int* last_multiple);
 long get_best_cache_length();
+void print_last_twenty(char* list, long int length, long int first_value);
 
 int main(int argc, char **argv) {
     long int n;
@@ -181,4 +182,23 @@ long get_best_cache_length() {
     long l3_lines = l3_cache_size / l3_cache_line_size;
 
     return l1_lines + l2_lines + l3_lines;
+}
+
+void print_last_twenty(char* list, long int length, long int first_value) {
+    int count = 0;
+    long int i;
+    long int last_value = first_value + 2 * (length - 1);
+
+    for (i = length - 1; i >= 0; i--) {
+        if (list[i] == '*') {
+            count++;
+            printf("%ld\n", last_value);
+        }
+
+        last_value -= 2;
+
+        if (count == 20) {
+            break;
+        }
+    }
 }
