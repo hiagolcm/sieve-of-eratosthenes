@@ -56,3 +56,11 @@ dkms.conf
 
 # vscode
 .vscode/*
+
+# latex
+**/*.aux
+**/*.latexmk
+**/*.fls
+**/*.log
+**/*.out
+**/*.gz
