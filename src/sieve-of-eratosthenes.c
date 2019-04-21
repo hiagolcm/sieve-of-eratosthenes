@@ -40,10 +40,10 @@ int main(int argc, char **argv) {
 }
 
 void process(long int n, int comm_sz, int my_rank) {
-    long int number_of_odds, reduced_size, original_reduced_size, value, sqrt_n, i, current_prime, count = 0, numbers_analyzed = 0, start, last_multiple;
+    long int number_of_odds, reduced_size, original_reduced_size, value, sqrt_n, i, current_prime, count = 0, numbers_analyzed = 0, start, global_count;
     char *list;
     long int* last_multiples;
-    int length_on_cache, current_length;
+    int length_on_cache;
     struct SOE soe;
 
     // quantidade de armazenamento no cache
@@ -92,10 +92,14 @@ void process(long int n, int comm_sz, int my_rank) {
     }
 
     if (my_rank == 0) {
-        count += soe.size;
+        count += soe.size + 1;
     }
 
-    printf("count: %ld\n", count);
+    MPI_Reduce(&count, &global_count, 1, MPI_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if (my_rank == 0) {
+        printf("glbal_count: %ld\n", global_count);
+    }
 }
 
 
