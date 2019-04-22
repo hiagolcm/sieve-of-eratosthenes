@@ -5,7 +5,7 @@ Para compilar o projeto basta executar o script compile-project.sh
 
 ```
     $ chmod +x compile-project.sh
-    $ ./project.sh
+    $ ./compile-project.sh
 ```
 
 ## Execução
